@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cognitive Clause Graph: An Interactive Exploration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Chosen Palette: Enterprise Trust Palette -->
+    <!-- Application Structure Plan: The SPA is designed as a top-down narrative journey. It starts with the high-level business problem, introduces CCG as the solution, allows for interactive deep-dives into the 'how-it-works' (Ingestion & Reasoning), visualizes the architecture, presents the value proposition, and concludes with the future vision. This structure was chosen to guide any user, technical or non-technical, through a logical discovery path, transforming a dense report into an engaging, self-paced exploration. Key interactions include tabbed content for RAG failures, clickable diagrams for the CCG pipeline and agents, and interactive charts to make data comparisons impactful. -->
+    <!-- Visualization & Content Choices: 
+        - RAG Failures -> Goal: Compare -> Viz: Tabbed Content (HTML/JS) -> Interaction: Click tabs -> Justification: Breaks down complex text into digestible, user-controlled segments.
+        - CCG vs. RAG -> Goal: Compare -> Viz: Horizontal Bar Chart (Chart.js/Canvas) -> Interaction: Hover tooltips -> Justification: Provides a powerful visual comparison of capabilities, more impactful than a static table.
+        - Ingestion Pipeline -> Goal: Organize -> Viz: HTML/CSS Flowchart -> Interaction: Click steps -> Justification: Makes a complex process intuitive and explorable.
+        - Reasoning Engine -> Goal: Compare/Organize -> Viz: Donut Chart (Chart.js/Canvas) + HTML list -> Interaction: Click list items -> Justification: Connects qualitative roles with quantitative "cognitive load" in one interactive module.
+        - Architecture -> Goal: Organize -> Viz: HTML/CSS Diagrams -> Interaction: Hover tooltips -> Justification: Creates interactive, self-documenting diagrams without relying on static images or prohibited SVG.
+        - Future Enhancements -> Goal: Change -> Viz: HTML/CSS Timeline -> Interaction: Hover points -> Justification: Classic, effective visualization for a roadmap.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f8fafc; /* slate-50 */
+        color: #1e293b; /* slate-800 */
+      }
+      .chart-container {
+        position: relative;
+        width: 100%;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        height: 400px;
+        max-height: 500px;
+      }
+      @media (max-width: 768px) {
+        .chart-container {
+          height: 300px;
+          max-height: 400px;
+        }
+      }
+      .nav-link {
+        transition: color 0.3s, border-color 0.3s;
+      }
+      .nav-link:hover {
+        color: #0ea5e9; /* sky-500 */
+      }
+      .active-section {
+        color: #0ea5e9; /* sky-500 */
+        border-bottom-color: #0ea5e9;
+      }
+      .tab {
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .active-tab {
+        background-color: #0ea5e9; /* sky-500 */
+        color: white;
+      }
+      .diagram-node {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+      }
+      .diagram-node:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+      .arrow-down {
+        width: 2px;
+        height: 30px;
+        background-color: #94a3b8; /* slate-400 */
+        margin: 0 auto;
+        position: relative;
+      }
+      .arrow-down::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid #94a3b8; /* slate-400 */
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+      <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center py-4">
+          <div class="text-2xl font-bold text-slate-800">CCG</div>
+          <div class="hidden md:flex space-x-8">
+            <a
+              href="#problem"
+              class="nav-link font-medium text-slate-600 border-b-2 border-transparent pb-1"
+              >The Problem</a
+            >
+            <a
+              href="#solution"
+              class="nav-link font-medium text-slate-600 border-b-2 border-transparent pb-1"
+              >The Solution</a
+            >
+            <a
+              href="#how-it-works"
+              class="nav-link font-medium text-slate-600 border-b-2 border-transparent pb-1"
+              >How It Works</a
+            >
+            <a
+              href="#architecture"
+              class="nav-link font-medium text-slate-600 border-b-2 border-transparent pb-1"
+              >Architecture</a
+            >
+            <a
+              href="#value"
+              class="nav-link font-medium text-slate-600 border-b-2 border-transparent pb-1"
+              >Value</a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <header class="bg-slate-800 text-white text-center py-20 px-4">
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight">
+        Cognitive Clause Graph
+      </h1>
+      <p class="mt-4 text-lg md:text-xl text-sky-300 max-w-3xl mx-auto">
+        An interactive exploration of the neuro-symbolic framework for
+        autonomous contractual reasoning.
+      </p>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+      <section id="problem" class="my-16 scroll-mt-24">
+        <div class="bg-white rounded-lg shadow-xl p-6 md:p-10">
+          <h2 class="text-3xl font-bold text-center text-slate-900 mb-4">
+            The Problem: Beyond Simple Search
+          </h2>
+          <p class="text-lg text-slate-600 mb-10 max-w-4xl mx-auto text-center">
+            Current AI, like Retrieval-Augmented Generation (RAG), is great for
+            finding facts but fails at understanding complex logic in contracts
+            and policies. This creates a "semantic gap" leading to critical
+            errors. Explore the three main failure modes below.
+          </p>
+          <div class="max-w-4xl mx-auto">
+            <div class="flex justify-center border-b border-slate-200 mb-6">
+              <button
+                data-tab="failure1"
+                class="tab-btn active-tab font-semibold py-3 px-6 rounded-t-lg"
+              >
+                Multi-Hop Reasoning
+              </button>
+              <button
+                data-tab="failure2"
+                class="tab-btn font-semibold py-3 px-6 rounded-t-lg"
+              >
+                Scope & Hierarchy
+              </button>
+              <button
+                data-tab="failure3"
+                class="tab-btn font-semibold py-3 px-6 rounded-t-lg"
+              >
+                Quantitative Logic
+              </button>
+            </div>
+            <div
+              id="failure-content"
+              class="bg-slate-50 p-6 rounded-lg border border-slate-200 min-h-[200px]"
+            >
+              <div id="failure1" class="tab-content">
+                <h3 class="text-xl font-bold text-sky-700 mb-2">
+                  Failure 1: Inability to Perform Multi-Hop Reasoning
+                </h3>
+                <p class="text-slate-700">
+                  A decision often requires a chain of deductions. For a "knee
+                  surgery" query, RAG struggles to connect it to the general
+                  category "Joint replacement surgery" and then find the
+                  separate clause stating a "24-month waiting period" for that
+                  category. It sees disconnected facts, not a logical path.
+                </p>
+              </div>
+              <div id="failure2" class="tab-content hidden">
+                <h3 class="text-xl font-bold text-sky-700 mb-2">
+                  Failure 2: Misinterpretation of Scope & Hierarchy
+                </h3>
+                <p class="text-slate-700">
+                  Policies have structure. An exclusion for "Treatment for
+                  Alcoholism" might only apply to "PART A- DOMESTIC COVER."
+                  RAG's "chunking" process destroys this hierarchy, causing it
+                  to wrongly apply the exclusion to an international travel
+                  query—a catastrophic contextual error.
+                </p>
+              </div>
+              <div id="failure3" class="tab-content hidden">
+                <h3 class="text-xl font-bold text-sky-700 mb-2">
+                  Failure 3: Inability to Evaluate Quantitative Conditions
+                </h3>
+                <p class="text-slate-700">
+                  Adjudication needs precision. Is a "3-month-old policy" older
+                  than a required "24-month waiting period"? RAG's probabilistic
+                  nature makes it unreliable for this kind of deterministic math
+                  ($3 < 24$). CCG handles this with a dedicated symbolic logic
+                  engine for guaranteed accuracy.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="solution" class="my-16 scroll-mt-24">
+        <div class="bg-white rounded-lg shadow-xl p-6 md:p-10">
+          <h2 class="text-3xl font-bold text-center text-slate-900 mb-4">
+            The Solution: A Paradigm Shift
+          </h2>
+          <p class="text-lg text-slate-600 mb-10 max-w-4xl mx-auto text-center">
+            The Cognitive Clause Graph (CCG) is not an incremental fix; it's a
+            new architecture. It moves from flat text chunks to a structured,
+            interconnected graph, enabling true logical reasoning. This chart
+            compares the core capabilities.
+          </p>
+          <div class="chart-container h-[450px] md:h-[500px]">
+            <canvas id="ragVsCcgChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" class="my-16 scroll-mt-24">
+        <div class="bg-white rounded-lg shadow-xl p-6 md:p-10">
+          <h2 class="text-3xl font-bold text-center text-slate-900 mb-4">
+            How It Works: An Interactive Deep Dive
+          </h2>
+          <p class="text-lg text-slate-600 mb-10 max-w-4xl mx-auto text-center">
+            The CCG's power comes from two core processes: a one-time Ingestion
+            Pipeline that turns documents into knowledge, and a real-time
+            Reasoning Engine that answers queries. Click on the steps below to
+            learn more.
+          </p>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div>
+              <h3 class="text-2xl font-bold text-center text-sky-700 mb-6">
+                1. The Ingestion Pipeline
+              </h3>
+              <div
+                class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-2"
+              >
+                <div
+                  class="diagram-node ingestion-step text-center p-3 bg-slate-100 rounded-lg border-2 border-slate-200 w-full md:w-1/4"
+                  data-content="ingestion1"
+                >
+                  <div class="text-3xl">📄</div>
+                  <h4 class="font-semibold mt-1">Pre-process</h4>
+                </div>
+                <div class="text-2xl text-slate-400 font-light hidden md:block">
+                  &rarr;
+                </div>
+                <div class="arrow-down md:hidden"></div>
+                <div
+                  class="diagram-node ingestion-step text-center p-3 bg-slate-100 rounded-lg border-2 border-slate-200 w-full md:w-1/4"
+                  data-content="ingestion2"
+                >
+                  <div class="text-3xl">🧩</div>
+                  <h4 class="font-semibold mt-1">Segment</h4>
+                </div>
+                <div class="text-2xl text-slate-400 font-light hidden md:block">
+                  &rarr;
+                </div>
+                <div class="arrow-down md:hidden"></div>
+                <div
+                  class="diagram-node ingestion-step text-center p-3 bg-slate-100 rounded-lg border-2 border-slate-200 w-full md:w-1/4"
+                  data-content="ingestion3"
+                >
+                  <div class="text-3xl">🧠</div>
+                  <h4 class="font-semibold mt-1">Extract</h4>
+                </div>
+                <div class="text-2xl text-slate-400 font-light hidden md:block">
+                  &rarr;
+                </div>
+                <div class="arrow-down md:hidden"></div>
+                <div
+                  class="diagram-node ingestion-step text-center p-3 bg-slate-100 rounded-lg border-2 border-slate-200 w-full md:w-1/4"
+                  data-content="ingestion4"
+                >
+                  <div class="text-3xl">🕸️</div>
+                  <h4 class="font-semibold mt-1">Assemble</h4>
+                </div>
+              </div>
+              <div
+                id="ingestion-info"
+                class="mt-6 bg-sky-50 p-4 rounded-lg border border-sky-200 min-h-[150px]"
+              >
+                <p class="text-slate-700">Click a step above to see details.</p>
+              </div>
+            </div>
+            <div>
+              <h3 class="text-2xl font-bold text-center text-sky-700 mb-6">
+                2. The Multi-Agent Reasoning Engine
+              </h3>
+              <div class="flex flex-col md:flex-row gap-6 items-center">
+                <div
+                  class="chart-container !h-64 !w-64 !max-w-[256px] !max-h-[256px]"
+                >
+                  <canvas id="reasoningEngineChart"></canvas>
+                </div>
+                <div class="flex-1">
+                  <ul class="space-y-2">
+                    <li
+                      class="diagram-node agent-item p-3 rounded-lg border-2 border-slate-200"
+                      data-agent="agent1"
+                    >
+                      <strong>1. Deconstruction Agent:</strong> Parses the
+                      user's query.
+                    </li>
+                    <li
+                      class="diagram-node agent-item p-3 rounded-lg border-2 border-slate-200"
+                      data-agent="agent2"
+                    >
+                      <strong>2. Traversal Agent:</strong> Finds relevant paths
+                      in the graph.
+                    </li>
+                    <li
+                      class="diagram-node agent-item p-3 rounded-lg border-2 border-slate-200"
+                      data-agent="agent3"
+                    >
+                      <strong>3. Logic & Synthesis Agent:</strong> Applies
+                      deterministic rules.
+                    </li>
+                    <li
+                      class="diagram-node agent-item p-3 rounded-lg border-2 border-slate-200"
+                      data-agent="agent4"
+                    >
+                      <strong>4. Justification Agent:</strong> Builds the
+                      auditable response.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div
+                id="agent-info"
+                class="mt-4 bg-sky-50 p-4 rounded-lg border border-sky-200 min-h-[100px]"
+              >
+                <p class="text-slate-700">
+                  Click an agent above to see its role.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture" class="my-16 scroll-mt-24">
+        <div class="bg-white rounded-lg shadow-xl p-6 md:p-10">
+          <h2 class="text-3xl font-bold text-center text-slate-900 mb-4">
+            System Architecture
+          </h2>
+          <p class="text-lg text-slate-600 mb-10 max-w-4xl mx-auto text-center">
+            The architecture creates a clear "division of labor." The Neuro side
+            understands language, and the Symbolic side enforces logic. This
+            separation is key to providing enterprise-grade reliability and
+            trust.
+          </p>
+          <div class="bg-slate-50 p-6 rounded-lg border border-slate-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div class="text-center p-6 bg-white rounded-lg shadow-md">
+                <h3 class="text-2xl font-bold text-violet-600 mb-3">
+                  Neuro Domain
+                </h3>
+                <p class="font-semibold text-slate-700 mb-4">
+                  The Art of Understanding Language
+                </p>
+                <div class="space-y-2 text-left">
+                  <p class="p-2 bg-violet-100 text-violet-800 rounded">
+                    ➡️ Raw Text & Ambiguous Clauses
+                  </p>
+                  <p class="p-2 bg-violet-100 text-violet-800 rounded">
+                    🧠 LLMs & NLP Models
+                  </p>
+                  <p class="p-2 bg-violet-100 text-violet-800 rounded">
+                    ⬅️ Identified Entities & Proposed Rules
+                  </p>
+                </div>
+                <p class="mt-4 text-sm text-slate-500">
+                  Handles ambiguity and nuance using probabilistic
+                  interpretation and pattern recognition.
+                </p>
+              </div>
+              <div class="text-center p-6 bg-white rounded-lg shadow-md">
+                <h3 class="text-2xl font-bold text-green-600 mb-3">
+                  Symbolic Domain
+                </h3>
+                <p class="font-semibold text-slate-700 mb-4">
+                  The Science of Enforcing Logic
+                </p>
+                <div class="space-y-2 text-left">
+                  <p class="p-2 bg-green-100 text-green-800 rounded">
+                    ➡️ Structured Queries & Subgraphs
+                  </p>
+                  <p class="p-2 bg-green-100 text-green-800 rounded">
+                    ⚙️ Graph Database & Logic Engine
+                  </p>
+                  <p class="p-2 bg-green-100 text-green-800 rounded">
+                    ⬅️ Deterministic Decision & Audit Proof
+                  </p>
+                </div>
+                <p class="mt-4 text-sm text-slate-500">
+                  Handles certainty and rigor using deterministic verification
+                  and formal logic.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="value" class="my-16 scroll-mt-24">
+        <div class="bg-white rounded-lg shadow-xl p-6 md:p-10">
+          <h2 class="text-3xl font-bold text-center text-slate-900 mb-4">
+            The Three Pillars of Value
+          </h2>
+          <p class="text-lg text-slate-600 mb-10 max-w-4xl mx-auto text-center">
+            The CCG's technical superiority translates directly into tangible
+            business value, delivering compelling benefits to the operational,
+            compliance, and strategic functions of the enterprise.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div
+              class="bg-sky-50 p-8 rounded-lg shadow-md border-b-4 border-sky-500"
+            >
+              <div class="text-5xl mb-4">🎯</div>
+              <h3 class="text-2xl font-bold text-sky-800 mb-2">
+                Accuracy & Reliability
+              </h3>
+              <p class="text-sky-700">
+                Deterministic logic eliminates costly errors from probabilistic
+                guesses, ensuring decisions are robust and reliable for
+                mission-critical tasks.
+              </p>
+            </div>
+            <div
+              class="bg-sky-50 p-8 rounded-lg shadow-md border-b-4 border-sky-500"
+            >
+              <div class="text-5xl mb-4">🔍</div>
+              <h3 class="text-2xl font-bold text-sky-800 mb-2">
+                Transparency & Auditability
+              </h3>
+              <p class="text-sky-700">
+                Every decision comes with a step-by-step proof, citing source
+                clauses. This solves the "black box" problem and de-risks AI
+                adoption.
+              </p>
+            </div>
+            <div
+              class="bg-sky-50 p-8 rounded-lg shadow-md border-b-4 border-sky-500"
+            >
+              <div class="text-5xl mb-4">🚀</div>
+              <h3 class="text-2xl font-bold text-sky-800 mb-2">
+                Proactive Strategic Insight
+              </h3>
+              <p class="text-sky-700">
+                The CCG becomes a living model of enterprise logic, enabling
+                dynamic risk analysis and turning a cost center into a source of
+                strategic advantage.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bg-slate-800 text-white text-center p-8 mt-16">
+      <p class="text-lg font-semibold">
+        A Reasoning Partner for the Knowledge-Aware Enterprise
+      </p>
+      <p class="text-sm text-slate-400 mt-2">
+        &copy; 2025 Cognitive Clause Graph Initiative. All rights reserved.
+      </p>
+    </footer>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const enterpriseTrustPalette = {
+          primary: "#0ea5e9", // sky-500
+          secondary: "#6366f1", // indigo-500
+          accent: "#8b5cf6", // violet-500
+          dark: "#1e293b", // slate-800
+          light: "#f1f5f9", // slate-100
+          text: "#1e293b",
+          danger: "#ef4444", // red-500
+        };
+
+        const wrapLabel = (str, maxWidth = 16) => {
+          if (str.length <= maxWidth) return str;
+          const words = str.split(" ");
+          const lines = [];
+          let currentLine = "";
+          for (const word of words) {
+            if (
+              (currentLine + " " + word).length > maxWidth &&
+              currentLine.length > 0
+            ) {
+              lines.push(currentLine.trim());
+              currentLine = "";
+            }
+            currentLine += word + " ";
+          }
+          lines.push(currentLine.trim());
+          return lines;
+        };
+
+        const tooltipTitleCallback = (tooltipItems) => {
+          const item = tooltipItems[0];
+          let label = item.chart.data.labels[item.dataIndex];
+          return Array.isArray(label) ? label.join(" ") : label;
+        };
+
+        const defaultChartOptions = {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: { title: tooltipTitleCallback },
+              backgroundColor: "#0f172a",
+              titleFont: { size: 14, weight: "bold" },
+              bodyFont: { size: 12 },
+              padding: 10,
+              cornerRadius: 4,
+            },
+          },
+          scales: {
+            y: {
+              ticks: { color: enterpriseTrustPalette.text },
+              grid: { color: "#e2e8f0" },
+            },
+            x: {
+              ticks: { color: enterpriseTrustPalette.text },
+              grid: { color: "#e2e8f0" },
+            },
+          },
+        };
+
+        // RAG vs CCG Chart
+        const ragVsCcgCtx = document.getElementById("ragVsCcgChart");
+        if (ragVsCcgCtx) {
+          new Chart(ragVsCcgCtx, {
+            type: "bar",
+            data: {
+              labels: [
+                "Data Structure",
+                "Retrieval Mechanism",
+                "Reasoning Type",
+                "Handling Conditions",
+                "Handling Hierarchy",
+                "Explainability",
+                "Robustness",
+              ].map((l) => wrapLabel(l)),
+              datasets: [
+                {
+                  label: "Standard RAG",
+                  data: [2, 2, 1, 1, 1, 1, 2],
+                  backgroundColor: "rgba(239, 68, 68, 0.6)",
+                  borderColor: enterpriseTrustPalette.danger,
+                  borderWidth: 1,
+                },
+                {
+                  label: "Cognitive Clause Graph (CCG)",
+                  data: [5, 5, 5, 5, 5, 5, 5],
+                  backgroundColor: "rgba(14, 165, 233, 0.6)",
+                  borderColor: enterpriseTrustPalette.primary,
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              ...defaultChartOptions,
+              indexAxis: "y",
+              plugins: {
+                ...defaultChartOptions.plugins,
+                legend: {
+                  display: true,
+                  position: "bottom",
+                  labels: { color: enterpriseTrustPalette.text },
+                },
+              },
+              scales: {
+                x: {
+                  ...defaultChartOptions.scales.x,
+                  ticks: {
+                    ...defaultChartOptions.scales.x.ticks,
+                    callback: (value) =>
+                      ["", "Low", "Medium", "", "", "High"][value] || "",
+                  },
+                },
+              },
+            },
+          });
+        }
+
+        // Reasoning Engine Chart
+        const reasoningEngineCtx = document.getElementById(
+          "reasoningEngineChart"
+        );
+        if (reasoningEngineCtx) {
+          new Chart(reasoningEngineCtx, {
+            type: "doughnut",
+            data: {
+              labels: [
+                "Query Deconstruction",
+                "Graph Traversal",
+                "Logic & Synthesis",
+                "Justification & Response",
+              ],
+              datasets: [
+                {
+                  label: "Cognitive Load",
+                  data: [15, 30, 40, 15],
+                  backgroundColor: [
+                    "rgba(14, 165, 233, 0.5)", // sky-500
+                    "rgba(99, 102, 241, 0.6)", // indigo-500
+                    "rgba(14, 165, 233, 0.8)", // sky-500
+                    "rgba(99, 102, 241, 0.4)", // indigo-500
+                  ],
+                  borderColor: ["#0ea5e9", "#6366f1", "#0284c7", "#4f46e5"],
+                  borderWidth: 2,
+                },
+              ],
+            },
+            options: {
+              ...defaultChartOptions,
+              plugins: {
+                ...defaultChartOptions.plugins,
+                legend: { display: false },
+              },
+            },
+          });
+        }
+
+        // Tab functionality
+        const tabButtons = document.querySelectorAll(".tab-btn");
+        const tabContents = document.querySelectorAll(".tab-content");
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            tabButtons.forEach((btn) => btn.classList.remove("active-tab"));
+            button.classList.add("active-tab");
+            const tabId = button.dataset.tab;
+            tabContents.forEach((content) => {
+              content.id === tabId
+                ? content.classList.remove("hidden")
+                : content.classList.add("hidden");
+            });
+          });
+        });
+
+        // Ingestion pipeline interaction
+        const ingestionSteps = document.querySelectorAll(".ingestion-step");
+        const ingestionInfo = document.getElementById("ingestion-info");
+        const ingestionContent = {
+          ingestion1: {
+            title: "1. Document Pre-processing",
+            text: "The pipeline ingests native documents (PDF, DOCX) and uses layout-aware OCR to identify and tag the visual structure like headers, tables, and lists. This preserves context for later stages.",
+          },
+          ingestion2: {
+            title: "2. Clause Segmentation",
+            text: "Using layout metadata and NLP, the document is segmented into logical, semantically coherent units (paragraphs, bullet points), not arbitrary chunks. Each becomes a `Clause Node` in the graph.",
+          },
+          ingestion3: {
+            title: "3. Entity & Rule Extraction (Neuro)",
+            text: "Fine-tuned LLMs perform deep semantic analysis on each `Clause Node`, identifying key entities (e.g., procedures, monetary values) and classifying the clause's logical intent (e.g., `WaitingPeriodRule`).",
+          },
+          ingestion4: {
+            title: "4. Graph Assembly (Symbolic)",
+            text: "The final stage connects the extracted nodes with relationship edges (e.g., `has_rule`, `applies_to_scope`). This builds the final, interconnected Cognitive Clause Graph, which is loaded into the database.",
+          },
+        };
+        ingestionSteps.forEach((step) => {
+          step.addEventListener("click", () => {
+            const contentKey = step.dataset.content;
+            ingestionSteps.forEach((s) =>
+              s.classList.remove("bg-sky-100", "border-sky-500")
+            );
+            step.classList.add("bg-sky-100", "border-sky-500");
+            ingestionInfo.innerHTML = `<h4 class="font-bold text-sky-800 mb-2">${ingestionContent[contentKey].title}</h4><p class="text-slate-700">${ingestionContent[contentKey].text}</p>`;
+          });
+        });
+
+        // Agent interaction
+        const agentItems = document.querySelectorAll(".agent-item");
+        const agentInfo = document.getElementById("agent-info");
+        const agentContent = {
+          agent1: {
+            title: "Query Deconstruction Agent",
+            text: "The system's 'front door.' It receives a raw natural language query and uses an LLM to translate it into a structured, machine-readable JSON object, clarifying the user's intent.",
+          },
+          agent2: {
+            title: "Graph Traversal Agent",
+            text: "The 'researcher.' It takes the structured query and retrieves entire 'reasoning subgraphs'—interconnected clusters of nodes representing the procedure and all its governing rules, exclusions, and definitions.",
+          },
+          agent3: {
+            title: "Logic & Synthesis Agent",
+            text: "The central 'adjudicator.' It receives the subgraphs and performs a rigorous, deterministic evaluation using symbolic logic to arrive at a definitive, logically sound decision.",
+          },
+          agent4: {
+            title: "Justification & Response Agent",
+            text: "The 'communicator.' It takes the final decision and its reasoning path to construct a structured JSON output with a clear, step-by-step justification, making the decision fully transparent.",
+          },
+        };
+        agentItems.forEach((item) => {
+          item.addEventListener("click", () => {
+            const contentKey = item.dataset.agent;
+            agentItems.forEach((i) =>
+              i.classList.remove("bg-sky-100", "border-sky-500")
+            );
+            item.classList.add("bg-sky-100", "border-sky-500");
+            agentInfo.innerHTML = `<h4 class="font-bold text-sky-800 mb-2">${agentContent[contentKey].title}</h4><p class="text-slate-700">${agentContent[contentKey].text}</p>`;
+          });
+        });
+
+        // Nav link highlighting on scroll
+        const sections = document.querySelectorAll("section");
+        const navLinks = document.querySelectorAll(".nav-link");
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                navLinks.forEach((link) => {
+                  link.classList.remove("active-section");
+                  if (
+                    link.getAttribute("href").substring(1) === entry.target.id
+                  ) {
+                    link.classList.add("active-section");
+                  }
+                });
+              }
+            });
+          },
+          { rootMargin: "-50% 0px -50% 0px" }
+        );
+        sections.forEach((section) => observer.observe(section));
+      });
+    </script>
+  </body>
+</html>
